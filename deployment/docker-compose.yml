@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # Frontend container
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - lightmultidetect-network
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api
+    restart: unless-stopped
+
+  # Backend API container
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    volumes:
+      - ./data:/app/data
+      - ./ml/models/weights:/app/ml/models/weights
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    restart: unless-stopped
+    networks:
+      - lightmultidetect-network
+
+  # Worker container for processing tasks
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    command: celery -A backend.tasks.detection_tasks worker --loglevel=info
+    volumes:
+      - ./data:/app/data
+      - ./ml/models/weights:/app/ml/models/weights
+    depends_on:
+      - redis
+      - backend
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - C_FORCE_ROOT=true
+    restart: unless-stopped
+    networks:
+      - lightmultidetect-network
+
+  # Redis for task queue and caching
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - lightmultidetect-network
+
+networks:
+  lightmultidetect-network:
+    driver: bridge
+
+volumes:
+  redis-data: 
