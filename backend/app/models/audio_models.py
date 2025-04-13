@@ -250,13 +250,13 @@ def get_audio_model(model_type=None):
     
     if model_type == "wav2vec2":
         model = Wav2Vec2Model()
-        weights_path = os.path.join(settings.MODEL_WEIGHTS_DIR, "wav2vec2_deepfake.pth")
+        weights_path = os.path.join(settings.MODEL_WEIGHTS_DIR, "wav2vec2_deepfake.pt")  # Changed to .pt
     elif model_type == "rawnet2":
         model = RawNet2()
-        weights_path = os.path.join(settings.MODEL_WEIGHTS_DIR, "rawnet2_deepfake.pth")
+        weights_path = os.path.join(settings.MODEL_WEIGHTS_DIR, "rawnet2_deepfake.pth") 
     elif model_type == "melspec":
         model = MelSpecResNet()
-        weights_path = os.path.join(settings.MODEL_WEIGHTS_DIR, "melspec_deepfake.pth")
+        weights_path = os.path.join(settings.MODEL_WEIGHTS_DIR, "melspec_deepfake.onnx")  # Changed to .onnx
     else:
         raise ValueError(f"Unsupported audio model type: {model_type}")
     

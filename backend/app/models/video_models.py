@@ -283,10 +283,10 @@ def get_video_model(model_type=None):
         weights_path = os.path.join(settings.MODEL_WEIGHTS_DIR, "c3d_deepfake.pth")
     elif model_type == "two-stream":
         model = TwoStreamNetwork()
-        weights_path = os.path.join(settings.MODEL_WEIGHTS_DIR, "two_stream_deepfake.pth")
+        weights_path = os.path.join(settings.MODEL_WEIGHTS_DIR, "two_stream_deepfake.pth")  # This file might not exist
     elif model_type == "timesformer":
         model = TimeSformer()
-        weights_path = os.path.join(settings.MODEL_WEIGHTS_DIR, "timesformer_deepfake.pth")
+        weights_path = os.path.join(settings.MODEL_WEIGHTS_DIR, "timesformer_deepfake.pyth")  # Changed to .pyth
     else:
         raise ValueError(f"Unsupported video model type: {model_type}")
     
