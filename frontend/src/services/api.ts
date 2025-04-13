@@ -1,6 +1,8 @@
 // Base API configuration
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
+console.log('Using API URL:', API_URL); // For debugging
+
 // Generic HTTP request handler
 export async function apiRequest<T = any>(
     endpoint: string,
@@ -16,37 +18,45 @@ export async function apiRequest<T = any>(
         headers,
     };
 
-    const response = await fetch(`${API_URL}${endpoint}`, config);
+    const url = `${API_URL}${endpoint}`;
+    console.log('Requesting:', url); // For debugging
+    
+    try {
+        const response = await fetch(url, config);
 
-    if (!response.ok) {
-        // Handle different error status codes
-        if (response.status === 404) {
-            throw new Error('Resource not found');
+        if (!response.ok) {
+            // Handle different error status codes
+            if (response.status === 404) {
+                throw new Error('Resource not found');
+            }
+
+            if (response.status === 401) {
+                throw new Error('Unauthorized access');
+            }
+
+            if (response.status === 429) {
+                throw new Error('Too many requests, please try again later');
+            }
+
+            // Try to get error details from response
+            try {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || `API error: ${response.status}`);
+            } catch (e) {
+                throw new Error(`API error: ${response.status}`);
+            }
         }
 
-        if (response.status === 401) {
-            throw new Error('Unauthorized access');
+        // Return JSON response, or empty object if no content
+        if (response.status !== 204) {
+            return await response.json();
         }
 
-        if (response.status === 429) {
-            throw new Error('Too many requests, please try again later');
-        }
-
-        // Try to get error details from response
-        try {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || `API error: ${response.status}`);
-        } catch (e) {
-            throw new Error(`API error: ${response.status}`);
-        }
+        return {} as T;
+    } catch (error) {
+        console.error('API request failed:', error);
+        throw error;
     }
-
-    // Return JSON response, or empty object if no content
-    if (response.status !== 204) {
-        return await response.json();
-    }
-
-    return {} as T;
 }
 
 // Upload file with form data

@@ -1,103 +1,79 @@
 version: '3.8'
 
 services:
+  # Backend API service
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./results:/app/results
+      - ./visualizations:/app/visualizations
+      - ./model_weights:/app/backend/ml/models/weights
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - deepfake_network
+
+  # Celery worker for background processing
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python start_worker.py --concurrency=1
+    volumes:
+      - ./uploads:/app/uploads
+      - ./results:/app/results
+      - ./visualizations:/app/visualizations
+      - ./model_weights:/app/backend/ml/models/weights
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - backend
+    restart: unless-stopped
+    networks:
+      - deepfake_network
+
+  # Redis for message broker and result backend
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - deepfake_network
+
   # Frontend React application
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - REACT_APP_API_URL=http://localhost:8000
+      - "3000:80"
     depends_on:
       - backend
     restart: unless-stopped
-
-  # Backend FastAPI application
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
-      - ./uploads:/app/uploads
-      - ./visualizations:/app/visualizations
-    environment:
-      - ENVIRONMENT=development
-      - DATABASE_URL=postgresql://user:password@db:5432/deepfake_detection
-      - REDIS_URL=redis://redis:6379/0
-      - MODEL_WEIGHTS_DIR=/app/app/models/weights
-      - UPLOAD_DIR=/app/uploads
-      - VISUALIZATION_DIR=/app/visualizations
-      - SECRET_KEY=changeThisToASecureSecretKey
-    depends_on:
-      - db
-      - redis
-    restart: unless-stopped
-
-  # PostgreSQL database
-  db:
-    image: postgres:14-alpine
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=deepfake_detection
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
-
-  # Redis for caching and task queue
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-
-  # Celery worker for background tasks
-  worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: celery -A app.tasks.celery_app worker --loglevel=info
-    volumes:
-      - ./backend:/app
-      - ./uploads:/app/uploads
-      - ./visualizations:/app/visualizations
-    environment:
-      - ENVIRONMENT=development
-      - DATABASE_URL=postgresql://user:password@db:5432/deepfake_detection
-      - REDIS_URL=redis://redis:6379/0
-      - MODEL_WEIGHTS_DIR=/app/app/models/weights
-      - UPLOAD_DIR=/app/uploads
-      - VISUALIZATION_DIR=/app/visualizations
-    depends_on:
-      - backend
-      - redis
-    restart: unless-stopped
-
-  # Flower for Celery monitoring (optional)
-  flower:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: celery -A app.tasks.celery_app flower --port=5555
-    ports:
-      - "5555:5555"
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - redis
-      - worker
-    restart: unless-stopped
+    networks:
+      - deepfake_network
 
 volumes:
-  postgres_data:
+  redis_data:
+
+networks:
+  deepfake_network:
+    driver: bridge

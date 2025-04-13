@@ -1,1 +1,1 @@
-ÿþ
+# DeepFake Detection Platform Main Module
