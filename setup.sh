@@ -1,29 +1,50 @@
 #!/bin/bash
 
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows, use: .\venv\Scripts\activate
+# Setup and run script for DeepFake Detection Platform
 
-# Install backend dependencies
-cd backend
-pip install -r requirements.txt
+# Display banner
+echo "================================================================================"
+echo "                       DeepFake Detection Platform Setup                       "
+echo "================================================================================"
 
-# Install frontend dependencies
-cd ../frontend
-npm install
+# Check if Docker is installed
+if ! command -v docker &> /dev/null; then
+    echo "Docker is not installed. Please install Docker and Docker Compose first."
+    exit 1
+fi
 
-# Start Redis (if not already running)
-# On Windows, you need to install Redis separately
-# On Linux/Mac: redis-server &
+# Check if Docker Compose is installed
+if ! command -v docker-compose &> /dev/null; then
+    echo "Docker Compose is not installed. Please install Docker Compose first."
+    exit 1
+fi
 
-# Start Celery worker (in a new terminal)
-cd ../backend
-celery -A tasks.detection_tasks worker --loglevel=info
+# Create necessary directories
+mkdir -p uploads
+mkdir -p visualizations
+mkdir -p backend/app/models/weights
 
-# Start backend server (in a new terminal)
-cd ../backend
-python -m uvicorn main:app --reload
+# Download model weights (optional, as they're quite large)
+read -p "Do you want to download model weights? This might take some time. (y/n): " download_weights
+if [[ $download_weights == "y" ]]; then
+    echo "Downloading model weights..."
+    python scripts/download_weights.py
+else
+    echo "Skipping model weights download. You'll need to provide them manually."
+fi
 
-# Start frontend development server (in a new terminal)
-cd ../frontend
-npm start 
+# Build and start Docker containers
+echo "Building and starting Docker containers..."
+docker-compose up --build -d
+
+echo "================================================================================"
+echo "                        Setup completed successfully!                          "
+echo "================================================================================"
+echo ""
+echo "The DeepFake Detection Platform is now running:"
+echo "  - Frontend: http://localhost:3000"
+echo "  - Backend API: http://localhost:8000"
+echo "  - API Documentation: http://localhost:8000/docs"
+echo ""
+echo "To stop the application, run: docker-compose down"
+echo "================================================================================" 
